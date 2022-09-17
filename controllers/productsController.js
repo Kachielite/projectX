@@ -4,7 +4,7 @@ const Product = require("../model/products");
 const User = require("../model/user");
 const { validationResult } = require("express-validator");
 const cloudinary = require("cloudinary").v2;
-const deleteFile = require('../utils/deleteFile');
+const deleteFile = require("../utils/deleteFile");
 
 dotenv.config();
 //Cloudinary Config
@@ -72,23 +72,21 @@ exports.addProduct = async (req, res, next) => {
         let productOwner = await User.findById(req.userId);
         productOwner.products.push(newProduct._id.toString());
         await productOwner.save();
-        deleteFile(image)
+        deleteFile(image);
         return res.status(201).json({
           message: "Product successfully added",
           productId: newProduct._id.toString(),
         });
       } catch (error) {
-        let err = new Error(error)
+        let err = new Error(error);
         err.statusCode = 500;
-        throw err
+        throw err;
       }
     } catch (error) {
-        let err = new Error(error)
-        err.statusCode = 500;
-        throw err
+      let err = new Error(error);
+      err.statusCode = 500;
+      throw err;
     }
-
-
   } catch (error) {
     if (!error.statusCode) {
       error.statusCode = 500;
@@ -124,6 +122,7 @@ exports.editProduct = async (req, res, next) => {
   let productId = req.params.productId;
   let name = req.body.name;
   let description = req.body.description;
+  let image = req.file.path;
   let category = req.body.category;
   let price = req.body.price;
 
@@ -149,17 +148,31 @@ exports.editProduct = async (req, res, next) => {
       error.statusCode = 401;
       throw error;
     }
-    productToBeEdited.name = name;
-    productToBeEdited.description = description;
-    productToBeEdited.category = category;
-    productToBeEdited.price = parseInt(price);
-
-    const editedProduct = await productToBeEdited.save();
-
-    return res.status(200).json({
-      message: "Product successfully edited",
-      productId: editedProduct._id.toString(),
-    });
+    let imageStorage;
+    try {
+      if (image) {
+        await cloudinary.uploader.destroy(productToBeEdited.image_id);
+        imageStorage = await cloudinary.uploader.upload(image, {
+          folder: "projectx",
+        });
+        productToBeEdited.image_url = imageStorage.secure_url;
+        productToBeEdited.image_id = imageStorage.public_id;
+      }
+      productToBeEdited.name = name;
+      productToBeEdited.description = description;
+      productToBeEdited.category = category;
+      productToBeEdited.price = parseInt(price);
+      const editedProduct = await productToBeEdited.save();
+      deleteFile(image);
+      return res.status(200).json({
+        message: "Product successfully edited",
+        productId: editedProduct._id.toString(),
+      });
+    } catch (error) {
+      let err = new Error(error);
+      err.statusCode = 500;
+      throw err;
+    }
   } catch (error) {
     if (!error.statusCode) {
       error.statusCode = 500;
@@ -186,11 +199,26 @@ exports.deleteProduct = async (req, res, next) => {
       error.statusCode = 401;
       throw error;
     }
-    await Product.findByIdAndDelete(productToBeDeleted._id);
-    let productOwner = await User.findById(req.userId);
-    productOwner.products.pull(productId);
-    await productOwner.save();
-    return res.status(200).json({ message: "Product successfully deleted" });
+    try {
+      await cloudinary.uploader.destroy(productToBeDeleted.image_id);
+      try {
+        await Product.findByIdAndDelete(productToBeDeleted._id);
+        let productOwner = await User.findById(req.userId);
+        productOwner.products.pull(productId);
+        await productOwner.save();
+        return res
+          .status(200)
+          .json({ message: "Product successfully deleted" });
+      } catch (error) {
+        let err = new Error(error);
+        err.statusCode = 500;
+        throw err;
+      }
+    } catch (error) {
+      let err = new Error(error);
+      err.statusCode = 500;
+      throw err;
+    }
   } catch (error) {
     if (!error.statusCode) {
       error.statusCode = 500;
