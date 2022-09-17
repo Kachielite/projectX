@@ -5,7 +5,8 @@ const authenticationController = require("../controllers/authenticationControlle
 
 const route = express.Router();
 
-route.put(
+//* POST
+route.post(
   "/register",
   [
     body("username")

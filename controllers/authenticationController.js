@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 
+
+//* Registration Endpoint
 exports.register = async (req, res, next) => {
   let businessName = req.body.business_name;
   let email = req.body.email;
@@ -36,6 +38,7 @@ exports.register = async (req, res, next) => {
   }
 };
 
+//* Sign In Endpoint
 exports.signIn = async (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
