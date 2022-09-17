@@ -1,16 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const authenticationRoute = require('./routes/authenticationRoute')
+const authenticationRoute = require('./routes/authenticationRoute');
 
 dotenv.config();
 const app = express();
 
 //Middleware
-app.use(cors)
-app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json());
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,22 +19,26 @@ app.use((req, res, next) => {
 //route
 app.use('/api',authenticationRoute);
 
+app.use('/', (req, res, next) =>{
+    return res.status(200).json({"message":'You got a valid response'})
+})
+
 app.use((error, req, res, next) =>{
     let statusCode = error.statusCode;
     let message = error.message;
-    let data = error.data;
-    res.statusCode(statusCode).json({message:message, error: data})
-    next()
-})
+    let data = error.data
+    return res.status(statusCode).json({"message":message, "errors": data})
+});
 
-mongoose.connect(`mongodb+srv://projectx:${process.env.MONGODBPASSWORD}@cluster0.vp0vvvd.mongodb.net/projectx?retryWrites=true&w=majority'`).then(results =>{
-    console.log(results)
+mongoose.connect(`mongodb+srv://projectx:${process.env.MONGODBPASSWORD}@cluster0.vp0vvvd.mongodb.net/projectx?retryWrites=true&w=majority`).then(results =>{
     app.listen(3001, () =>{
         console.log("Connection to DB successful...Server is listening on port 3001..")
     });
 }).catch(err =>{
     console.log(err)
 })
+
+
 
 
 

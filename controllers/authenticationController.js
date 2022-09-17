@@ -1,39 +1,71 @@
-const User = require('../model/user');
-const bycrypt = require('bcryptjs')
-const {validationResult} = require('express-validator');
+const User = require("../model/user");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { validationResult } = require("express-validator");
 
-exports.register = async (req, res, next) =>{
+exports.register = async (req, res, next) => {
+  let businessName = req.body.business_name;
+  let email = req.body.email;
+  let username = req.body.username;
+  let password = req.body.password;
 
-    let businessName = req.body.business_name
-    let email = req.body.email;
-    let username = req.body.username;
-    let password = req.body.password;
-
-    const errors = validationResult(req);
-    if(!errors.isEmpty()){
-        let error = new Error('Invalid User Input');
-        error.statusCode = 422;
-        error.data = errors.array();
-        throw error;
+  try {
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      let error = new Error("Invalid User Input");
+      error.statusCode = 422;
+      error.data = errors.array();
+      throw error;
     }
 
-    try {
-        const hashPassword = await bycrypt.hash(password, 12);
+    const hashPassword = await bcrypt.hash(password, 12);
+    let user = new User();
+    user.business_name = businessName;
+    user.email = email;
+    user.username = username;
+    user.password = hashPassword;
 
-        let user = new User();
-        user.business_name = businessName;
-        user.email = email;
-        user.username = username;
-        user.password = hashPassword;
+    await user.save();
 
-        await user.save();
-
-        return res.statusCode(201).json({message: 'User successful created'})
-    } catch (error) {
-        if(!error.statusCode){
-            error.statusCode = 500
-        }
-        next(error)
+    return res.status(201).json({ message: "User successful created" });
+  } catch (error) {
+    if (!error.statusCode) {
+      error.statusCode = 500;
     }
+    next(error);
+  }
+};
 
-}
+exports.signIn = async (req, res, next) => {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  try {
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      let error = new Error("User with this email could not be found");
+      error.statusCode = 404;
+      throw error;
+    }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (passwordMatch) {
+      const token = jwt.sign(
+        { userId: user._id.toString(), email: user.email },
+        "projectxsupertokenencryption",
+        { expiresIn: "1h" }
+      );
+      return res
+        .status(200)
+        .json({ message: "Login successful", token: token });
+    } else {
+      let error = new Error("Incorrect Credentials");
+      error.statusCode = 401;
+      throw error;
+    }
+  } catch (error) {
+    if (!error.statusCode) {
+      error.statusCode = 500;
+    }
+    next(error);
+  }
+};
