@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const Product = require("../model/products");
 const User = require("../model/user");
 const { validationResult } = require("express-validator");
@@ -5,9 +6,14 @@ const { validationResult } = require("express-validator");
 //* Get Products
 exports.getProducts = async (req, res, next) => {
 
+    const currentPage = req.query.page || 1;
+    const limitPerPage = 3;
+
     try {
         let userProducts = await User.findById(req.userId).populate('products')
-        res.status(200).json({"message":"All user products successfully fetched", products: userProducts.products})
+        console.log(userProducts)
+        let productPagination = userProducts.products.slice(((currentPage-1)*limitPerPage), limitPerPage*currentPage)
+        res.status(200).json({"message":"All user products successfully fetched", products: productPagination})
     } catch (error) {
         if (!error.statusCode) {
             error.statusCode = 500;
