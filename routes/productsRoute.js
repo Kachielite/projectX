@@ -8,6 +8,8 @@ const route = express.Router();
 //* GET
 route.get("/product/:productId", productsController.getProduct);
 
+route.get("/products", isAuth, productsController.getProducts);
+
 //* POST
 route.post(
   "/add_product",
@@ -59,6 +61,10 @@ route.put(
 );
 
 //* DELETE
-route.delete("/delete_product/:productId", isAuth, productsController.deleteProduct);
+route.delete(
+  "/delete_product/:productId",
+  isAuth,
+  productsController.deleteProduct
+);
 
 module.exports = route;

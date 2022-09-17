@@ -2,6 +2,21 @@ const Product = require("../model/products");
 const User = require("../model/user");
 const { validationResult } = require("express-validator");
 
+//* Get Products
+exports.getProducts = async (req, res, next) => {
+
+    try {
+        let userProducts = await User.findById(req.userId).populate('products')
+        res.status(200).json({"message":"All user products successfully fetched", products: userProducts.products})
+    } catch (error) {
+        if (!error.statusCode) {
+            error.statusCode = 500;
+          }
+          next(error);
+    }
+
+}
+
 //* Add Product 
 exports.addProduct = async (req, res, next) => {
   let name = req.body.name;
