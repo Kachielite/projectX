@@ -1,33 +1,49 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
 const Product = require("../model/products");
 const User = require("../model/user");
 const { validationResult } = require("express-validator");
+const cloudinary = require("cloudinary").v2;
+const deleteFile = require('../utils/deleteFile');
 
-//* Get Products
+dotenv.config();
+//Cloudinary Config
+cloudinary.config({
+  cloud_name: "dahpyu601",
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+//* Get Products per owner
 exports.getProducts = async (req, res, next) => {
+  const currentPage = req.query.page || 1;
+  const limitPerPage = 3;
 
-    const currentPage = req.query.page || 1;
-    const limitPerPage = 3;
-
-    try {
-        let userProducts = await User.findById(req.userId).populate('products')
-        let productPagination = userProducts.products.slice(((currentPage-1)*limitPerPage), limitPerPage*currentPage)
-        res.status(200).json({"message":"All user products successfully fetched", products: productPagination})
-    } catch (error) {
-        if (!error.statusCode) {
-            error.statusCode = 500;
-          }
-          next(error);
+  try {
+    let userProducts = await User.findById(req.userId).populate("products");
+    let productPagination = userProducts.products.slice(
+      (currentPage - 1) * limitPerPage,
+      limitPerPage * currentPage
+    );
+    res.status(200).json({
+      message: "All user products successfully fetched",
+      products: productPagination,
+    });
+  } catch (error) {
+    if (!error.statusCode) {
+      error.statusCode = 500;
     }
+    next(error);
+  }
+};
 
-}
-
-//* Add Product 
+//* Add Product
 exports.addProduct = async (req, res, next) => {
   let name = req.body.name;
   let description = req.body.description;
   let category = req.body.category;
   let price = req.body.price;
+  let image = req.file.path;
 
   try {
     let errors = validationResult(req);
@@ -46,20 +62,33 @@ exports.addProduct = async (req, res, next) => {
     product.product_owner = req.userId;
 
     try {
-      const newProduct = await product.save();
-      let productOwner = await User.findById(req.userId);
-      productOwner.products.push(newProduct._id.toString());
-      await productOwner.save();
-      return res.status(201).json({
-        message: "Product successfully added",
-        productId: newProduct._id.toString(),
+      const imageStorage = await cloudinary.uploader.upload(image, {
+        folder: "projectx",
       });
-    } catch (error) {
-      if (!error.statusCode) {
-        error.statusCode = 500;
+      product.image_url = imageStorage.secure_url;
+      product.image_id = imageStorage.public_id;
+      try {
+        const newProduct = await product.save();
+        let productOwner = await User.findById(req.userId);
+        productOwner.products.push(newProduct._id.toString());
+        await productOwner.save();
+        deleteFile(image)
+        return res.status(201).json({
+          message: "Product successfully added",
+          productId: newProduct._id.toString(),
+        });
+      } catch (error) {
+        let err = new Error(error)
+        err.statusCode = 500;
+        throw err
       }
-      next(error);
+    } catch (error) {
+        let err = new Error(error)
+        err.statusCode = 500;
+        throw err
     }
+
+
   } catch (error) {
     if (!error.statusCode) {
       error.statusCode = 500;
@@ -90,7 +119,7 @@ exports.getProduct = async (req, res, next) => {
   }
 };
 
-//* Edit Product 
+//* Edit Product
 exports.editProduct = async (req, res, next) => {
   let productId = req.params.productId;
   let name = req.body.name;
