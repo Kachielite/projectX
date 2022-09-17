@@ -56,7 +56,7 @@ exports.signIn = async (req, res, next) => {
       );
       return res
         .status(200)
-        .json({ message: "Login successful", token: token });
+        .json({ message: "Login successful", token: token, userId: user._id.toString()});
     } else {
       let error = new Error("Incorrect Credentials");
       error.statusCode = 401;
