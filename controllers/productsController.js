@@ -11,7 +11,6 @@ exports.getProducts = async (req, res, next) => {
 
     try {
         let userProducts = await User.findById(req.userId).populate('products')
-        console.log(userProducts)
         let productPagination = userProducts.products.slice(((currentPage-1)*limitPerPage), limitPerPage*currentPage)
         res.status(200).json({"message":"All user products successfully fetched", products: productPagination})
     } catch (error) {
